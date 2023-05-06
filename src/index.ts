@@ -14,22 +14,35 @@ const io = new Server(server, {
     }
 });
 
-let connectedUsers: string[] = [];
+
+let connectedUsers: string[] = []
 
 io.on("connection", (socket) => {
     console.log(`User Connected: ${socket.id}`);
 
-    socket.on("join_room", (data)=>{
-        socket.join(data);
-        console.log(`User if ID: ${socket.id} joined room ${data}`);
+    socket.on("join_room", (data) => {
+        socket.join(data.room);
+        socket.data.name = data.userName;
+        socket.data.room = data.room;
+        connectedUsers.push(data.userName);
+        console.log(`User if ID: ${socket.id} joined room ${data.room}`);
+
+        io.in(socket.data.room).emit('list-update', {
+            list: connectedUsers
+        });
     });
 
-    socket.on("send_message", (data)=>{
-        socket.to(data.room).emit("receive_message", data);
+    socket.on("send_message", (data) => {
+        socket.to(socket.data.room).emit("receive_message", data);
     });
 
-    socket.on("disconnect", ()=>{
+    socket.on("disconnect", () => {
         console.log("User Disconnected", socket.id);
+        connectedUsers = connectedUsers.filter(u => u != socket.data.name);
+
+        io.in(socket.data.room).emit('list-update', {
+            list: connectedUsers
+        });
     });
 });
 
